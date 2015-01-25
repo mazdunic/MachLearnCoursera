@@ -1,0 +1,85 @@
+## Load training data
+TrainingdataRaw <- read.csv(file="pml-training.csv")
+## Create copy to work with and investigate
+Trainingdata <- TrainingdataRaw
+summary(Trainingdata)
+## >>  Identified a number of columns that are redundant, so checking testing file.
+ 
+## Load Testing file & investigate
+data2Pred <- read.csv(file="pml-testing.csv")
+summary(data2Pred)
+## >> A large number of columns are blank.
+
+## Remove blank variables
+data2Pred2 <- data2Pred[,colSums(is.na(data2Pred))<nrow(data2Pred)]
+## Remove ID column
+data2Pred2$ID <- NULL
+## Add back the Target variable
+data2Pred2$classe <- data2Pred$classe
+
+## Remove the same variables from the Training data.
+Trainingdata2 <- Trainingdata[names(Trainingdata) %in% names(data2Pred2)]
+
+## Load caret
+library(caret)
+
+## Split the data, and create reproducible seed.
+set.seed(150)
+inTrain <- createDataPartition(y=Trainingdata2$classe, p=0.75, list=FALSE)
+training <- Trainingdata2[inTrain,]
+testing <- Trainingdata2[-inTrain,]
+
+## create a randomForest model, default values.
+modFit <- train(classe ~ ., method="rf",data=training)
+
+## Check model performance
+## View variable importance
+varImp(modFit)
+
+##                               Overall
+## raw_timestamp_part_1           100.000
+## roll_belt                       42.710
+## num_window                      40.076
+## pitch_forearm                   26.418
+## magnet_dumbbell_z               17.417
+## magnet_dumbbell_y               14.789
+## roll_forearm                    12.445
+## yaw_belt                        11.846
+## pitch_belt                      11.413
+## cvtd_timestamp30/11/2011 17:12  10.206
+## cvtd_timestamp2/12/2011 14:58    9.039
+## cvtd_timestamp2/12/2011 13:33    8.287
+## cvtd_timestamp28/11/2011 14:15   7.031
+## magnet_dumbbell_x                6.979
+## roll_dumbbell                    6.346
+## accel_belt_z                     6.298
+## accel_forearm_x                  5.260
+## cvtd_timestamp5/12/2011 14:24    5.146
+## magnet_belt_y                    5.111
+## accel_dumbbell_y                 5.073
+
+
+modFit$finalModel
+
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 41
+## 
+##         OOB estimate of  error rate: 0.06%
+## Confusion matrix:
+##      A    B    C    D    E  class.error
+## A 4185    0    0    0    0 0.0000000000
+## B    2 2845    1    0    0 0.0010533708
+## C    0    3 2564    0    0 0.0011686794
+## D    0    0    1 2410    1 0.0008291874
+## E    0    0    0    1 2705 0.0003695492
+
+## Accuracy is surprisingly high.
+## Use model on project testing data.
+
+predict(modFit,newdata=data2Pred2)
+
+## [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E
